@@ -1,7 +1,7 @@
 package templates
 
 const ServerServiceTpl = `
-func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ name . }}, opts ...server.Option) error {
+func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ name . }}, opts ...ektoserver.Option) error {
 	ektoServer := ektoserver.NewEktoServer(opts...)
 	server := grpc.NewServer()
 	Register{{ name . }}(server, srv)
