@@ -1,6 +1,6 @@
 package templates
 
-const ServiceTpl = `type {{ .Name }}MQProxy struct {
+const MQServiceTpl = `type {{ .Name }}MQProxy struct {
 	server *grpc.Server
 }
 

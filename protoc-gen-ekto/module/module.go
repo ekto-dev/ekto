@@ -69,7 +69,7 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 		},
 	})
 	template.Must(tpl.Parse(templates.MqTpl))
-	template.Must(tpl.New("service").Parse(templates.ServiceTpl))
+	template.Must(tpl.New("service").Parse(templates.MQServiceTpl))
 	m.AddGeneratorTemplateFile(out.String(), tpl, f)
 }
 
@@ -78,12 +78,12 @@ func (m *EktoModule) generateServerFile(f pgs.File) {
 	defer m.Pop()
 	out := m.ctx.OutputPath(f).SetExt(".ekto.server.go")
 
-	tpl := template.New("ekto-mq").Funcs(map[string]any{
+	tpl := template.New("ekto-server").Funcs(map[string]any{
 		"package": m.ctx.PackageName,
 		"name":    m.ctx.Name,
 	})
-	template.Must(tpl.Parse(templates.MqTpl))
-	template.Must(tpl.New("service").Parse(templates.ServiceTpl))
+	template.Must(tpl.Parse(templates.ServerTpl))
+	template.Must(tpl.New("service").Parse(templates.ServerServiceTpl))
 	m.AddGeneratorTemplateFile(out.String(), tpl, f)
 }
 
