@@ -28,13 +28,14 @@ func (m *EktoModule) InitContext(c pgs.BuildContext) {
 
 func (m *EktoModule) Execute(targets map[string]pgs.File, pkgs map[string]pgs.Package) []pgs.Artifact {
 	for _, f := range targets {
-		m.generateFile(f)
+		m.generateMQFile(f)
+		m.generateServerFile(f)
 	}
 
 	return m.Artifacts()
 }
 
-func (m *EktoModule) generateFile(f pgs.File) {
+func (m *EktoModule) generateMQFile(f pgs.File) {
 	m.Push(f.Name().String())
 	defer m.Pop()
 	out := m.ctx.OutputPath(f).SetExt(".ekto.mq.go")
@@ -66,6 +67,20 @@ func (m *EktoModule) generateFile(f pgs.File) {
 
 			return ektoOptions.Mq.Handles
 		},
+	})
+	template.Must(tpl.Parse(templates.MqTpl))
+	template.Must(tpl.New("service").Parse(templates.ServiceTpl))
+	m.AddGeneratorTemplateFile(out.String(), tpl, f)
+}
+
+func (m *EktoModule) generateServerFile(f pgs.File) {
+	m.Push(f.Name().String())
+	defer m.Pop()
+	out := m.ctx.OutputPath(f).SetExt(".ekto.server.go")
+
+	tpl := template.New("ekto-mq").Funcs(map[string]any{
+		"package": m.ctx.PackageName,
+		"name":    m.ctx.Name,
 	})
 	template.Must(tpl.Parse(templates.MqTpl))
 	template.Must(tpl.New("service").Parse(templates.ServiceTpl))

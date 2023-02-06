@@ -5,7 +5,7 @@ const ServiceTpl = `type {{ .Name }}MQProxy struct {
 }
 
 func New{{ .Name }}MQProxy() *{{ .Name }}MQProxy {
-	return &{{ name . }}MQProxy{
+	return &{{ .Name }}MQProxy{
 		server: grpc.NewServer(),
 	}
 }
@@ -14,7 +14,7 @@ func (p *{{ .Name }}MQProxy) Register(svc {{ name . }}) {
 	Register{{ name . }}(p.server, svc)
 }
 
-func (p *{{ .Name }}MQProxy) Run(ctx context.Context, client *cloudeventsv2.Client) error {
+func (p *{{ .Name }}MQProxy) Run(ctx context.Context, client cloudeventsv2.Client) error {
 	// Start the gRPC server in a goroutine
 	go func() {
 		lis, err := net.Listen("tcp", ektoPort)
@@ -29,12 +29,16 @@ func (p *{{ .Name }}MQProxy) Run(ctx context.Context, client *cloudeventsv2.Clie
 	}()
 
 	// connect to the gRPC server
-	conn, err := grpc.Dial(
+	conn, err := grpc.DialContext(
 		ctx,
 		ektoPort,
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
+
+	if err != nil {
+		return err
+	}
 
 	svcClient := New{{ .Name }}Client(conn)
 

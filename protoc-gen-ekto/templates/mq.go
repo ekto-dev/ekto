@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/ekto-dev/ekto/mq/pkg/cloudevents"
 	format "github.com/cloudevents/sdk-go/binding/format/protobuf/v2"
 	cloudeventsv2 "github.com/cloudevents/sdk-go/v2"
 	"google.golang.org/grpc"
