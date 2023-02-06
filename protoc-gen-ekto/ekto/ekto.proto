@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "github.com/ekto-dev/ekto/protoc-gen-ekto/ekto";
+
+import "google/protobuf/descriptor.proto";
+
+package ekto;
+
+message MQOptions {
+  string handles = 1;
+}
+
+message Options {
+  MQOptions mq = 1;
+}
+
+extend google.protobuf.MethodOptions {
+  Options dev = 50386;
+}
