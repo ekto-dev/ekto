@@ -2,9 +2,9 @@ package templates
 
 const ServerServiceTpl = `
 func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ name . }}, opts ...ektoserver.Option) error {
-	ektoServer := ektoserver.NewEktoServer(opts...)
 	server := grpc.NewServer()
 	Register{{ name . }}(server, srv)
+	reflection.Register(server)
 
 	eg, _ := errgroup.WithContext(ctx)
 	eg.Go(func() error {
@@ -17,6 +17,8 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 		return server.Serve(lis)
 	})
 
+	{{- if hasGateway . }}
+	ektoServer := ektoserver.NewEktoServer(opts...)
 	if ektoServer.HasGateway() {
 		eg.Go(func() error {
 			conn, err := grpc.DialContext(
@@ -54,6 +56,7 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 			return gwServer.ListenAndServe()
 		})
 	}
+	{{- end }}
 
 	return eg.Wait()
 }

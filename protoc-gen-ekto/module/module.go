@@ -5,6 +5,7 @@ import (
 	"github.com/ekto-dev/ekto/protoc-gen-ekto/templates"
 	pgs "github.com/lyft/protoc-gen-star/v2"
 	pgsgo "github.com/lyft/protoc-gen-star/v2/lang/go"
+	"google.golang.org/genproto/googleapis/api/annotations"
 	"html/template"
 )
 
@@ -40,6 +41,25 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 	defer m.Pop()
 	out := m.ctx.OutputPath(f).SetExt(".ekto.mq.go")
 
+	handlesEvent := func(method pgs.Method) bool {
+		m.ModuleBase.Debug("handlesEvent:", method.Name().String())
+		var ektoOptions = &ekto.Options{}
+		if defined, _ := method.Extension(ekto.E_Dev, ektoOptions); !defined {
+			return false // no ekto options defined
+		}
+
+		return ektoOptions.Mq != nil && ektoOptions.Mq.Handles != ""
+	}
+
+	svcHandlesEvent := func(svc pgs.Service) bool {
+		for _, method := range svc.Methods() {
+			if handlesEvent(method) {
+				return true
+			}
+		}
+
+		return false
+	}
 	tpl := template.New("ekto-mq").Funcs(map[string]any{
 		"package": m.ctx.PackageName,
 		"name":    m.ctx.Name,
@@ -50,15 +70,8 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 		"output": func(m pgs.Method) string {
 			return m.Output().Name().String()
 		},
-		"handlesEvent": func(method pgs.Method) bool {
-			m.ModuleBase.Debug("handlesEvent:", method.Name().String())
-			var ektoOptions = &ekto.Options{}
-			if defined, _ := method.Extension(ekto.E_Dev, ektoOptions); !defined {
-				return false // no ekto options defined
-			}
-
-			return ektoOptions.Mq != nil && ektoOptions.Mq.Handles != ""
-		},
+		"hasMessageHandler": svcHandlesEvent,
+		"handlesEvent":      handlesEvent,
 		"eventName": func(method pgs.Method) string {
 			var ektoOptions = &ekto.Options{}
 			if defined, _ := method.Extension(ekto.E_Dev, ektoOptions); !defined {
@@ -68,6 +81,19 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 			return ektoOptions.Mq.Handles
 		},
 	})
+
+	hasHandlers := false
+	for _, svc := range f.Services() {
+		if svcHandlesEvent(svc) {
+			hasHandlers = true
+			break
+		}
+	}
+
+	if !hasHandlers {
+		return
+	}
+
 	template.Must(tpl.Parse(templates.MqTpl))
 	template.Must(tpl.New("service").Parse(templates.MQServiceTpl))
 	m.AddGeneratorTemplateFile(out.String(), tpl, f)
@@ -81,6 +107,16 @@ func (m *EktoModule) generateServerFile(f pgs.File) {
 	tpl := template.New("ekto-server").Funcs(map[string]any{
 		"package": m.ctx.PackageName,
 		"name":    m.ctx.Name,
+		"hasGateway": func(svc pgs.Service) bool {
+			for _, method := range svc.Methods() {
+				e := &annotations.Http{}
+				if defined, _ := method.Extension(annotations.E_Http, e); defined {
+					return true
+				}
+			}
+
+			return false
+		},
 	})
 	template.Must(tpl.Parse(templates.ServerTpl))
 	template.Must(tpl.New("service").Parse(templates.ServerServiceTpl))

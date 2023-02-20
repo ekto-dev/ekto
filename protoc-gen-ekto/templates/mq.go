@@ -18,6 +18,8 @@ import (
 var ektoPort = ":3070"
 {{ "" }}
 {{- range .Services }}
+{{- if hasMessageHandler . }}
 {{ template "service" . }}
+{{- end }}
 {{- end }}
 `
