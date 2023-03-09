@@ -1,0 +1,14 @@
+version: v1
+plugins:
+  - remote: buf.build/protocolbuffers/plugins/go
+    out: .
+    opt: paths=source_relative
+  - remote: buf.build/grpc/plugins/go
+    out: .
+    opt: paths=source_relative
+  - remote: buf.build/grpc-ecosystem/plugins/grpc-gateway
+    out: .
+    opt: paths=source_relative
+  - name: ekto
+    out: .
+    opt: paths=source_relative

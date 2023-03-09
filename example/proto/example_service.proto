@@ -1,0 +1,34 @@
+syntax = "proto3";
+option go_package = "github.com/ekto-dev/ekto/example/proto;example";
+
+import "ekto/ekto.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+message UserCreated {
+  string id = 1;
+  string name = 2;
+}
+
+message NotificationRequest {
+  string user_id = 1;
+  string message = 2;
+}
+
+message NotificationResponse {
+  string user_id = 1;
+  string message = 2;
+}
+
+service NotificationService {
+  rpc HandleUserCreated(UserCreated) returns (google.protobuf.Empty) {
+    option (ekto.dev).mq.handles = "user.created";
+  }
+
+  rpc NotifyUser(NotificationRequest) returns (NotificationResponse) {
+    option (google.api.http) = {
+      post: "/v1/notify"
+      body: "*"
+    };
+  }
+}
