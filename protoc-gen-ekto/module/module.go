@@ -30,6 +30,7 @@ func (m *EktoModule) InitContext(c pgs.BuildContext) {
 func (m *EktoModule) Execute(targets map[string]pgs.File, pkgs map[string]pgs.Package) []pgs.Artifact {
 	for _, f := range targets {
 		m.generateMQFile(f)
+		m.generateDatabaseFile(f)
 		m.generateServerFile(f)
 	}
 
@@ -153,7 +154,7 @@ func (m *EktoModule) generateDatabaseFile(f pgs.File) {
 		},
 	})
 	template.Must(tpl.Parse(templates.DbTpl))
-	template.Must(tpl.New("connect").Parse(templates.DbServiceTpl))
+	template.Must(tpl.New("connect").Parse(templates.DbConnectTpl))
 	m.AddGeneratorTemplateFile(out.String(), tpl, f)
 }
 

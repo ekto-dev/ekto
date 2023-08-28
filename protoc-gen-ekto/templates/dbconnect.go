@@ -1,8 +1,8 @@
 package templates
 
-const DbServiceTpl = `
+const DbConnectTpl = `
 func Connect{{ .Name }}DB() (*gorm.DB, error) {
-	return database.Connect({{ databaseName . }})
+	return database.Connect("{{ databaseName . }}")
 }
 
 // The same as Connect, but panics if there is an error.
