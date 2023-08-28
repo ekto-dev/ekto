@@ -123,4 +123,38 @@ func (m *EktoModule) generateServerFile(f pgs.File) {
 	m.AddGeneratorTemplateFile(out.String(), tpl, f)
 }
 
+func (m *EktoModule) generateDatabaseFile(f pgs.File) {
+	m.Push(f.Name().String())
+	defer m.Pop()
+	out := m.ctx.OutputPath(f).SetExt(".ekto.db.go")
+
+	tpl := template.New("ekto-db").Funcs(map[string]any{
+		"package": m.ctx.PackageName,
+		"name":    m.ctx.Name,
+		"hasDatabase": func(svc pgs.Service) bool {
+			var ektoOptions = &ekto.SvcOptions{}
+			if defined, _ := svc.Extension(ekto.E_Svc, ektoOptions); defined {
+				if ektoOptions.Db != nil && ektoOptions.Db.Name != "" {
+					return true
+				}
+			}
+
+			return false
+		},
+		"databaseName": func(svc pgs.Service) string {
+			var ektoOptions = &ekto.SvcOptions{}
+			if defined, _ := svc.Extension(ekto.E_Svc, ektoOptions); defined {
+				if ektoOptions.Db != nil && ektoOptions.Db.Name != "" {
+					return ektoOptions.Db.Name
+				}
+			}
+
+			return ""
+		},
+	})
+	template.Must(tpl.Parse(templates.DbTpl))
+	template.Must(tpl.New("connect").Parse(templates.DbServiceTpl))
+	m.AddGeneratorTemplateFile(out.String(), tpl, f)
+}
+
 var _ pgs.Module = (*EktoModule)(nil)

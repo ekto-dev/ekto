@@ -10,8 +10,21 @@ message MQOptions {
   string handles = 1;
 }
 
+message DBOptions {
+  string name = 1;
+}
+
 message Options {
   MQOptions mq = 1;
+}
+
+message SvcOptions {
+  DBOptions db = 1;
+}
+
+// Services can specify DB Options
+extend google.protobuf.ServiceOptions {
+  SvcOptions svc = 50386;
 }
 
 extend google.protobuf.MethodOptions {
