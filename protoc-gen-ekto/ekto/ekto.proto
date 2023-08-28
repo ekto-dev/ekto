@@ -20,6 +20,7 @@ message Options {
 
 message SvcOptions {
   DBOptions db = 1;
+  string name = 2; // The service name is used to generate a client connector with this hostname on :50051
 }
 
 // Services can specify DB Options

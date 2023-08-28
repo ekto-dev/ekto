@@ -1,14 +1,15 @@
 package templates
 
 const ServerServiceTpl = `
-func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ name . }}, opts ...ektoserver.Option) error {
+func Start{{ .Name }}Server(ctx context.Context, srv {{ name . }}, opts ...ektoserver.Option) error {
 	server := grpc.NewServer()
 	Register{{ name . }}(server, srv)
 	reflection.Register(server)
 
 	eg, _ := errgroup.WithContext(ctx)
+	ektoServer := ektoserver.NewEktoServer(opts...)
 	eg.Go(func() error {
-		lis, err := net.Listen("tcp", rpcListenAddr)
+		lis, err := net.Listen("tcp", ektoServer.rpcAddr())
 
 		if err != nil {
 			return err
@@ -18,7 +19,6 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 	})
 
 	{{- if hasGateway . }}
-	ektoServer := ektoserver.NewEktoServer(opts...)
 	if ektoServer.HasGateway() {
 		eg.Go(func() error {
 			conn, err := grpc.DialContext(

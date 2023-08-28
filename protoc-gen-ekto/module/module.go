@@ -32,6 +32,7 @@ func (m *EktoModule) Execute(targets map[string]pgs.File, pkgs map[string]pgs.Pa
 		m.generateMQFile(f)
 		m.generateDatabaseFile(f)
 		m.generateServerFile(f)
+		m.generateClientFile(f)
 	}
 
 	return m.Artifacts()
@@ -121,6 +122,40 @@ func (m *EktoModule) generateServerFile(f pgs.File) {
 	})
 	template.Must(tpl.Parse(templates.ServerTpl))
 	template.Must(tpl.New("service").Parse(templates.ServerServiceTpl))
+	m.AddGeneratorTemplateFile(out.String(), tpl, f)
+}
+
+func (m *EktoModule) generateClientFile(f pgs.File) {
+	m.Push(f.Name().String())
+	defer m.Pop()
+	out := m.ctx.OutputPath(f).SetExt(".ekto.server.go")
+
+	tpl := template.New("ekto-server").Funcs(map[string]any{
+		"package": m.ctx.PackageName,
+		"name":    m.ctx.Name,
+		"hasServiceName": func(svc pgs.Service) bool {
+			var ektoOptions = &ekto.SvcOptions{}
+			if defined, _ := svc.Extension(ekto.E_Svc, ektoOptions); defined {
+				if ektoOptions.Name != "" {
+					return true
+				}
+			}
+
+			return false
+		},
+		"serviceName": func(svc pgs.Service) string {
+			var ektoOptions = &ekto.SvcOptions{}
+			if defined, _ := svc.Extension(ekto.E_Svc, ektoOptions); defined {
+				if ektoOptions.Name != "" {
+					return ektoOptions.Name
+				}
+			}
+
+			return ""
+		},
+	})
+	template.Must(tpl.Parse(templates.ClientTpl))
+	template.Must(tpl.New("service").Parse(templates.ClientServiceTpl))
 	m.AddGeneratorTemplateFile(out.String(), tpl, f)
 }
 

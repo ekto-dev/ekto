@@ -2,12 +2,15 @@ package server
 
 type EktoServer struct {
 	gatewayAddr string
+	rpcAddr     string
 }
 
 type Option func(*EktoServer)
 
 func NewEktoServer(opts ...Option) *EktoServer {
-	s := &EktoServer{}
+	s := &EktoServer{
+		rpcAddr: ":50051",
+	}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -26,4 +29,14 @@ func WithGateway(addr string) Option {
 	return func(s *EktoServer) {
 		s.gatewayAddr = addr
 	}
+}
+
+func WithRpcAddr(addr string) Option {
+	return func(s *EktoServer) {
+		s.rpcAddr = addr
+	}
+}
+
+func (s *EktoServer) RpcAddr() string {
+	return s.rpcAddr
 }
