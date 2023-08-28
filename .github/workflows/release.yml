@@ -24,6 +24,3 @@ jobs:
 #          username: phroggyy
 #          password: ${{ secrets.BSR_API_TOKEN }}
 #      - run: docker build -t plugins.buf.build/ekto/ekto:${{  }} protoc-gen-ekto
-  🚢 Publish to BSR:
-    runs-on: ubuntu-latest
-    steps:
