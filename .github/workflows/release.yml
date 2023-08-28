@@ -1,0 +1,29 @@
+name: Release
+run-name: Releasing library 🚀
+on: [push]
+jobs:
+  🏗️ Build package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Install buf
+        uses: bufbuild/buf-setup-action@v1
+      - name: Push changes
+        uses: bufbuild/buf-push-action@v1
+        with:
+          buf_token: ${{ secrets.BSR_API_TOKEN }}
+          draft: ${{ github.ref_name != 'main' }}
+          input: protoc-gen-ekto
+        # Publishing a remote plugin doesn't work the way the docs show at the moment, so
+        # for now, we only push the proto spec up (so that it can be depended upon).
+#      - name: Login to BSR
+#        uses: docker/login-action
+#        with:
+#          registry: plugins.buf.build
+#          username: phroggyy
+#          password: ${{ secrets.BSR_API_TOKEN }}
+#      - run: docker build -t plugins.buf.build/ekto/ekto:${{  }} protoc-gen-ekto
+  🚢 Publish to BSR:
+    runs-on: ubuntu-latest
+    steps:
