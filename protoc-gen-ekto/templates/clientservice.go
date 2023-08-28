@@ -17,12 +17,12 @@ func New{{ .Name }}ClientConn(ctx context.Context, opts ...grpc.DialOption) (*gr
 // *grpc.ClientConn into New{{ .Name }}Client.
 func New{{ .Name }}ConnectedClient(ctx context.Context, opts ...grpc.DialOption) ({{ .Name }}Client, error) {
 	opts = append(opts, grpc.WithBlock())
-	cc, err := New{{ .Name }}ClientConn(opts...)
+	cc, err := New{{ .Name }}ClientConn(ctx, opts...)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return New{{ .Name }}Client(cc)
+	return New{{ .Name }}Client(cc), nil
 }
 `

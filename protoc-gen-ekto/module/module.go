@@ -128,7 +128,7 @@ func (m *EktoModule) generateServerFile(f pgs.File) {
 func (m *EktoModule) generateClientFile(f pgs.File) {
 	m.Push(f.Name().String())
 	defer m.Pop()
-	out := m.ctx.OutputPath(f).SetExt(".ekto.server.go")
+	out := m.ctx.OutputPath(f).SetExt(".ekto.client.go")
 
 	tpl := template.New("ekto-server").Funcs(map[string]any{
 		"package": m.ctx.PackageName,
