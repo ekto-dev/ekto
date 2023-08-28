@@ -2,7 +2,8 @@ name: Release
 run-name: Releasing library 🚀
 on: [push]
 jobs:
-  🏗️ Build package:
+  publish-package:
+    name: 🏗️ Publish to BSR
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
