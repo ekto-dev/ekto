@@ -50,7 +50,7 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 
 			gwServer := &http.Server{
 				Addr:    ektoServer.GatewayAddr(),
-				Handler: gwmux,
+				Handler: ektoServer.ApplyMiddleware(gwmux),
 			}
 
 			return gwServer.ListenAndServe()
