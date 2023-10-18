@@ -38,6 +38,7 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 					&runtime.JSONPb{
 						MarshalOptions: protojson.MarshalOptions{
 							UseProtoNames: true,
+							EmitUnpopulated: true,
 						},
 					},
 				),
