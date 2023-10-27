@@ -2,7 +2,17 @@ package templates
 
 const ServerServiceTpl = `
 func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ name . }}, opts ...ektoserver.Option) error {
-	server := grpc.NewServer()
+	ektoServer := ektoserver.NewEktoServer(opts...)
+	interceptors, err := ektoServer.Interceptors()
+	if err != nil {
+		return err
+	}
+
+	server := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			interceptors...,
+		)
+	)
 	Register{{ name . }}(server, srv)
 	reflection.Register(server)
 
@@ -18,7 +28,6 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 	})
 
 	{{- if hasGateway . }}
-	ektoServer := ektoserver.NewEktoServer(opts...)
 	if ektoServer.HasGateway() {
 		eg.Go(func() error {
 			conn, err := grpc.DialContext(

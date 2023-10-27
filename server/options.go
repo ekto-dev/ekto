@@ -1,12 +1,21 @@
 package server
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/bufbuild/protovalidate-go"
+	validatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+)
 
 type Middleware = func(h http.Handler) http.Handler
 
 type EktoServer struct {
 	gatewayAddr     string
 	middlewareStack []Middleware
+	logger          *zap.Logger
 }
 
 type Option func(*EktoServer)
@@ -35,6 +44,25 @@ func (s *EktoServer) ApplyMiddleware(h http.Handler) http.Handler {
 	return h
 }
 
+// Interceptors returns a set of default interceptors to apply
+func (s *EktoServer) Interceptors() ([]grpc.UnaryServerInterceptor, error) {
+	validator, err := protovalidate.New()
+	if err != nil {
+		return nil, err
+	}
+
+	mw := []grpc.UnaryServerInterceptor{
+		otelgrpc.UnaryServerInterceptor(),
+	}
+
+	if s.logger != nil {
+		mw = append(mw, LoggingInterceptor(s.logger))
+	}
+
+	mw = append(mw, validatemw.UnaryServerInterceptor(validator))
+	return mw, nil
+}
+
 func WithGateway(addr string) Option {
 	return func(s *EktoServer) {
 		s.gatewayAddr = addr
@@ -44,5 +72,11 @@ func WithGateway(addr string) Option {
 func WithMiddleware(mw ...Middleware) Option {
 	return func(s *EktoServer) {
 		s.middlewareStack = append(s.middlewareStack, mw...)
+	}
+}
+
+func WithLogger(logger *zap.Logger) Option {
+	return func(s *EktoServer) {
+		s.logger = logger
 	}
 }
