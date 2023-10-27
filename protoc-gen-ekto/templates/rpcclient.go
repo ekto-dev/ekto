@@ -23,7 +23,7 @@ func init() {
 	{{- range .Services }}
 	{{- if hasQueryMethods . }}
 	ektorpc.RegisterQuerier(func (cc *grpc.ClientConn) ektorpc.Querier[{{ queryableMessage . }}] {
-		return New{{ .Name }}Client(cc)
+		return New{{ .Name }}Querier(cc)
 	})
 	{{- end }}
 	{{- end }}
