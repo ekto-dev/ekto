@@ -29,7 +29,7 @@ func RegisterHost[T any](host string) {
 func NewQuerier[T any](cc *grpc.ClientConn) Querier[T] {
 	res := interface{}(new(T))
 
-	queriers[res.(Stringable).String()].(QuerierConstructor[T])(cc)
+	return queriers[res.(Stringable).String()].(QuerierConstructor[T])(cc)
 }
 
 func ConnectNewQuerier[T any](ctx context.Context) (Querier[T], error) {
