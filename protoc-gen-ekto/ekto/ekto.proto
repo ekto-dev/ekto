@@ -14,8 +14,25 @@ message DBOptions {
   string name = 1;
 }
 
+enum QuerierMethod {
+  FIND = 0;
+  LIST = 1;
+  CREATE = 2;
+  UPDATE = 3;
+  DELETE = 4;
+}
+
+message QuerierOptions {
+  QuerierMethod method = 1;
+}
+
+message MessageOptions {
+  bool queryable = 1;
+}
+
 message Options {
   MQOptions mq = 1;
+  QuerierOptions querier = 2;
 }
 
 message SvcOptions {
@@ -30,3 +47,8 @@ extend google.protobuf.ServiceOptions {
 extend google.protobuf.MethodOptions {
   Options dev = 50386;
 }
+
+extend google.protobuf.MessageOptions {
+  MessageOptions msg = 50386;
+}
+
