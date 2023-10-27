@@ -11,7 +11,7 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 	server := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			interceptors...,
-		)
+		),
 	)
 	Register{{ name . }}(server, srv)
 	reflection.Register(server)
@@ -42,6 +42,7 @@ func Start{{ .Name }}Server(ctx context.Context, rpcListenAddr string, srv {{ na
 			}
 
 			gwmux := runtime.NewServeMux(
+				runtime.WithErrorHandler(ektoserver.HTTPErrorHandler),
 				runtime.WithMarshalerOption(
 					runtime.MIMEWildcard,
 					&runtime.JSONPb{

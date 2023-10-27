@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/bufbuild/protovalidate-go"
-	validatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -59,7 +58,7 @@ func (s *EktoServer) Interceptors() ([]grpc.UnaryServerInterceptor, error) {
 		mw = append(mw, LoggingInterceptor(s.logger))
 	}
 
-	mw = append(mw, validatemw.UnaryServerInterceptor(validator))
+	mw = append(mw, ValidateUnaryServerInterceptor(validator))
 	return mw, nil
 }
 
