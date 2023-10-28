@@ -148,6 +148,12 @@ func (m *EktoModule) generateRpcClientFile(f pgs.File) {
 		"package":          m.ctx.PackageName,
 		"name":             m.ctx.Name,
 		"queryableMessage": func(_ pgs.Node) string { return queryableMessageName },
+		"queryableMessageFQN": func(_ pgs.Node) string {
+			if found {
+				return queryableMessage.FullyQualifiedName()
+			}
+			return ""
+		},
 		"hasQueryMethods": func(svc pgs.Service) bool {
 			for _, method := range svc.Methods() {
 				e := &ekto.Options{}

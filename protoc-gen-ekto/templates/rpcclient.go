@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 {{ "" }}
+
 func init() {
 	{{- range .Services }}
 	{{- if hasQueryMethods . }}
@@ -29,6 +30,11 @@ func init() {
 	{{- end }}
 }
 {{ "" }}
+{{- if ne (queryableMessage .) "" }}
+func ({{ queryableMessage . }}) EktoQualifiedName() string {
+	return "{{ queryableMessageFQN . }}"
+}
+{{- end }}
 {{- range .Services }}
 {{ template "service" . }}
 {{- end }}

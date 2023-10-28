@@ -3,34 +3,37 @@ package rpc
 import (
 	"context"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-var queriers = make(map[protoreflect.FullName]any)
-var hosts = make(map[protoreflect.FullName]string)
+var queriers = make(map[string]any)
+var hosts = make(map[string]string)
 
-func getName[T any]() protoreflect.FullName {
-	res := interface{}(new(T))
-
-	return res.(protoreflect.ProtoMessage).ProtoReflect().Descriptor().FullName()
+type QueryableMessage interface {
+	EktoQualifiedName() string
 }
 
-type QuerierConstructor[T any] func(cc *grpc.ClientConn) Querier[T]
+func getName[T QueryableMessage]() string {
+	msg := *new(T)
+	return msg.EktoQualifiedName()
+}
 
-func RegisterQuerier[T any](querier QuerierConstructor[T]) {
+type QuerierConstructor[T QueryableMessage] func(cc *grpc.ClientConn) Querier[T]
+
+func RegisterQuerier[T QueryableMessage](querier QuerierConstructor[T]) {
 	queriers[getName[T]()] = querier
 }
 
-func RegisterHost[T any](host string) {
+func RegisterHost[T QueryableMessage](host string) {
 	hosts[getName[T]()] = host
 }
 
-func NewQuerier[T any](cc *grpc.ClientConn) Querier[T] {
+func NewQuerier[T QueryableMessage](cc *grpc.ClientConn) Querier[T] {
 	return queriers[getName[T]()].(QuerierConstructor[T])(cc)
 }
 
-func ConnectNewQuerier[T any](ctx context.Context) (Querier[T], error) {
-	cc, err := grpc.DialContext(ctx, hosts[getName[T]()])
+func ConnectNewQuerier[T QueryableMessage](ctx context.Context) (Querier[T], error) {
+	cc, err := grpc.DialContext(ctx, hosts[getName[T]()], grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -38,14 +41,14 @@ func ConnectNewQuerier[T any](ctx context.Context) (Querier[T], error) {
 	return queriers[getName[T]()].(QuerierConstructor[T])(cc), nil
 }
 
-type Querier[T any] interface {
+type Querier[T QueryableMessage] interface {
 	Find(ctx context.Context, id string) (*T, error)
 }
 
-func Find[T any](ctx context.Context, id string) (*T, error) {
+func Find[T QueryableMessage](ctx context.Context, id string) (*T, error) {
 	querier, err := ConnectNewQuerier[T](ctx)
 	if err != nil {
-		return nil, err
+		return new(T), err
 	}
 
 	return querier.Find(ctx, id)
