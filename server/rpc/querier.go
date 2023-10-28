@@ -7,7 +7,7 @@ import (
 )
 
 var queriers = make(map[protoreflect.FullName]any)
-var hosts = make(map[protoreflect.FullName]]string)
+var hosts = make(map[protoreflect.FullName]string)
 
 func getName[T any]() protoreflect.FullName {
 	res := interface{}(new(T))
