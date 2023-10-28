@@ -3,44 +3,39 @@ package rpc
 import (
 	"context"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-var queriers = make(map[string]any)
-var hosts = make(map[string]string)
+var queriers = make(map[protoreflect.FullName]any)
+var hosts = make(map[protoreflect.FullName]]string)
 
-type Stringable interface {
-	String() string
+func getName[T any]() protoreflect.FullName {
+	res := interface{}(new(T))
+
+	return res.(protoreflect.ProtoMessage).ProtoReflect().Descriptor().FullName()
 }
 
 type QuerierConstructor[T any] func(cc *grpc.ClientConn) Querier[T]
 
 func RegisterQuerier[T any](querier QuerierConstructor[T]) {
-	res := interface{}(new(T))
-
-	queriers[res.(Stringable).String()] = querier
+	queriers[getName[T]()] = querier
 }
 
 func RegisterHost[T any](host string) {
-	res := interface{}(new(T))
-
-	hosts[res.(Stringable).String()] = host
+	hosts[getName[T]()] = host
 }
 
 func NewQuerier[T any](cc *grpc.ClientConn) Querier[T] {
-	res := interface{}(new(T))
-
-	return queriers[res.(Stringable).String()].(QuerierConstructor[T])(cc)
+	return queriers[getName[T]()].(QuerierConstructor[T])(cc)
 }
 
 func ConnectNewQuerier[T any](ctx context.Context) (Querier[T], error) {
-	res := interface{}(new(T))
-
-	cc, err := grpc.DialContext(ctx, hosts[res.(Stringable).String()])
+	cc, err := grpc.DialContext(ctx, hosts[getName[T]()])
 	if err != nil {
 		return nil, err
 	}
 
-	return queriers[res.(Stringable).String()].(QuerierConstructor[T])(cc), nil
+	return queriers[getName[T]()].(QuerierConstructor[T])(cc), nil
 }
 
 type Querier[T any] interface {
