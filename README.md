@@ -106,6 +106,38 @@ example.StartNotificationServiceServer(
 Note that the gateway will only be started if the `google.api.http` option is
 used in your protobuf file.
 
+### Querying other gRPC services
+
+If you want a monolith-like developer experience, Ekto provides a `Querier` which currently
+supports `Find` (for now), allowing you to get a resource by ID from another service.
+
+This makes it possible to write code like this:
+```go
+user, err := rpc.Find[usersgen.User](ctx, request.UserId)
+```
+
+Without having to ever configure the gRPC connection to the users service. Instead, the generated
+code will map a given message type to the right methods. To support this, you need to add some
+protobuf options to your service being queried. Namely, `(ekto.msg).queryable = true` on the "model"
+that's being queried, and `(ekto.dev).querier.method` on the method:
+```protobuf
+syntax = "proto3";
+
+// GetUserRequest and anything else needed
+
+message User {
+  option (ekto.msg).queryable = true;
+  string id = 1;
+  string name = 2;
+}
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (User) {
+    option (ekto.dev).querier.method = FIND;
+  }
+}
+```
+
 ## Limitations
 
 - If you specify the `google.api.http` option, you **must** include the `grpc-gateway`
