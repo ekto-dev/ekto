@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm"
 	"net/http"
 )
 
@@ -45,11 +46,29 @@ func ValidateUnaryServerInterceptor(validator *protovalidate.Validator) grpc.Una
 	}
 }
 
+func GormErrorInterceptor() grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (resp interface{}, err error) {
+		resp, err = handler(ctx, req)
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Error(codes.NotFound, "record not found")
+		}
+
+		return
+	}
+}
+
 func HTTPErrorHandler(ctx context.Context, mux *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, req *http.Request, err error) {
 	s := status.Convert(err)
 	pb := s.Proto()
 	if pb.Message != ErrCodeValidation {
 		runtime.DefaultHTTPErrorHandler(ctx, mux, marshaler, w, req, err)
+		return
 	}
 
 	w.Header().Del("Trailer")

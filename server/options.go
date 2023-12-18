@@ -59,6 +59,7 @@ func (s *EktoServer) Interceptors() ([]grpc.UnaryServerInterceptor, error) {
 	}
 
 	mw = append(mw, ValidateUnaryServerInterceptor(validator))
+	mw = append(mw, GormErrorInterceptor())
 	return mw, nil
 }
 
