@@ -8,6 +8,7 @@ package ekto;
 
 message MQOptions {
   string handles = 1;
+  string event_name = 2;
 }
 
 message DBOptions {
