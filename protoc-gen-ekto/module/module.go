@@ -1,18 +1,21 @@
 package module
 
 import (
+	"fmt"
+	"html/template"
+
 	"github.com/ekto-dev/ekto/protoc-gen-ekto/ekto"
 	"github.com/ekto-dev/ekto/protoc-gen-ekto/templates"
 	pgs "github.com/lyft/protoc-gen-star/v2"
 	pgsgo "github.com/lyft/protoc-gen-star/v2/lang/go"
 	"github.com/samber/lo"
 	"google.golang.org/genproto/googleapis/api/annotations"
-	"html/template"
 )
 
 type EktoModule struct {
 	ctx pgsgo.Context
 	*pgs.ModuleBase
+	templateFns map[string]any
 }
 
 func Generator() *EktoModule {
@@ -26,6 +29,38 @@ func (m *EktoModule) Name() string { return "ekto" }
 func (m *EktoModule) InitContext(c pgs.BuildContext) {
 	m.ModuleBase.InitContext(c)
 	m.ctx = pgsgo.InitContext(c.Parameters())
+	m.templateFns = map[string]any{
+		"input": func(method pgs.Method) string {
+			m.ModuleBase.Debug("input:", method.Input().Name().String())
+			if m.ctx.ImportPath(method.Input()) != m.ctx.ImportPath(method) {
+				return fmt.Sprintf("%s.%s", m.ctx.PackageName(method.Input()).String(), m.ctx.Name(method.Input()).String())
+			}
+
+			return m.ctx.Name(method.Input()).String()
+		},
+		"messageHandlesEvent": func(msg pgs.Message) bool {
+			opts := &ekto.MessageOptions{}
+			ok, err := msg.Extension(ekto.E_Msg, opts)
+			if !ok || err != nil {
+				return false
+			}
+
+			return opts.Mq != nil && opts.Mq.EventName != ""
+		},
+		"messageEventName": func(msg pgs.Message) string {
+			opts := &ekto.MessageOptions{}
+			ok, err := msg.Extension(ekto.E_Msg, opts)
+			if !ok || err != nil {
+				return ""
+			}
+
+			if opts.Mq == nil {
+				return ""
+			}
+
+			return opts.Mq.EventName
+		},
+	}
 }
 
 func (m *EktoModule) Execute(targets map[string]pgs.File, pkgs map[string]pgs.Package) []pgs.Artifact {
@@ -43,15 +78,26 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 	m.Push(f.Name().String())
 	defer m.Pop()
 	out := m.ctx.OutputPath(f).SetExt(".ekto.mq.go")
+	m.ModuleBase.Log("generating mq file", f.Name().String())
 
 	handlesEvent := func(method pgs.Method) bool {
 		m.ModuleBase.Debug("handlesEvent:", method.Name().String())
-		var ektoOptions = &ekto.Options{}
-		if defined, _ := method.Extension(ekto.E_Dev, ektoOptions); !defined {
-			return false // no ekto options defined
+		var ektoMsgOptions = &ekto.MessageOptions{}
+		if inputHasEktoConfig, err := method.Input().Extension(ekto.E_Msg, ektoMsgOptions); !inputHasEktoConfig || err != nil {
+			return false
 		}
 
-		return ektoOptions.Mq != nil && ektoOptions.Mq.Handles != ""
+		if ektoMsgOptions.Mq != nil && ektoMsgOptions.Mq.EventName != "" {
+			return true
+		}
+
+		return false
+		//var ektoOptions = &ekto.Options{}
+		//if defined, _ := method.Extension(ekto.E_Dev, ektoOptions); !defined {
+		//	return false // no ekto options defined
+		//}
+		//
+		//return ektoOptions.Mq != nil && ektoOptions.Mq.Handles != ""
 	}
 
 	svcHandlesEvent := func(svc pgs.Service) bool {
@@ -66,30 +112,41 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 	tpl := template.New("ekto-mq").Funcs(map[string]any{
 		"package": m.ctx.PackageName,
 		"name":    m.ctx.Name,
-		"input": func(method pgs.Method) string {
-			m.ModuleBase.Debug("input:", method.Input().Name().String())
-			return method.Input().Name().String()
-		},
+		"input":   m.templateFns["input"],
 		"output": func(m pgs.Method) string {
 			return m.Output().Name().String()
 		},
 		"hasMessageHandler": svcHandlesEvent,
 		"handlesEvent":      handlesEvent,
 		"eventName": func(method pgs.Method) string {
-			var ektoOptions = &ekto.Options{}
-			if defined, _ := method.Extension(ekto.E_Dev, ektoOptions); !defined {
-				return "" // no ekto options defined
+			var ektoMsgOptions = &ekto.MessageOptions{}
+			if inputHasEktoConfig, err := method.Input().Extension(ekto.E_Msg, ektoMsgOptions); !inputHasEktoConfig || err != nil {
+				return ""
 			}
 
-			return ektoOptions.Mq.Handles
+			if ektoMsgOptions.Mq != nil && ektoMsgOptions.Mq.EventName != "" {
+				return ektoMsgOptions.Mq.EventName
+			}
+
+			return ""
 		},
+		"messageHandlesEvent": m.templateFns["messageHandlesEvent"],
+		"messageEventName":    m.templateFns["messageEventName"],
 	})
 
 	hasHandlers := false
-	for _, svc := range f.Services() {
-		if svcHandlesEvent(svc) {
+	for _, msg := range f.Messages() {
+		if m.templateFns["messageHandlesEvent"].(func(m pgs.Message) bool)(msg) {
 			hasHandlers = true
 			break
+		}
+	}
+	if !hasHandlers {
+		for _, svc := range f.Services() {
+			if svcHandlesEvent(svc) {
+				hasHandlers = true
+				break
+			}
 		}
 	}
 
@@ -193,13 +250,10 @@ func (m *EktoModule) generateRpcClientFile(f pgs.File) {
 
 			return false
 		},
-		"input": func(method pgs.Method) string {
-			return method.Input().Name().String()
-		},
+		"input": m.templateFns["input"],
 		"output": func(method pgs.Method) string {
 			return method.Output().Name().String()
 		},
-		//"funcImpl"
 	})
 	template.Must(tpl.Parse(templates.RpcClientTpl))
 	template.Must(tpl.New("service").Parse(templates.RpcClientServiceTpl))

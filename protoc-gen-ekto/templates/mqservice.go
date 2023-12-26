@@ -14,7 +14,7 @@ func (p *{{ .Name }}MQProxy) Register(svc {{ name . }}) {
 	Register{{ name . }}(p.server, svc)
 }
 
-func (p *{{ .Name }}MQProxy) Run(ctx context.Context, client cloudeventsv2.Client) error {
+func (p *{{ .Name }}MQProxy) Run(ctx context.Context, clientBuilder func (ctx context.Context, topic string) (cloudeventsv2.Client, error)) error {
 	// Start the gRPC server in a goroutine
 	go func() {
 		lis, err := net.Listen("tcp", ektoPort)
@@ -42,32 +42,41 @@ func (p *{{ .Name }}MQProxy) Run(ctx context.Context, client cloudeventsv2.Clien
 
 	svcClient := New{{ .Name }}Client(conn)
 
-	return client.StartReceiver(ctx, func(ctx context.Context, event cloudeventsv2.Event) protocol.Result {
-		switch event.Type() {
-		{{- range .Methods }}
-		{{- if handlesEvent . }}
-		case "{{ eventName . }}":
-			// decode the cloudevent into a protobuf message
-			protoEvent, err := format.ToProto(&event)
-			if err != nil {
-				return protocol.NewReceipt(false, "failed to decode event: %s", err.Error())
-			}
-
-			var msg *{{ input . }}
-			err = protoEvent.GetProtoData().UnmarshalTo(msg)
-			if err != nil {
-				return protocol.NewReceipt(false, "failed to unmarshal event data: %s", err.Error())
-			}
-
-			_, err = svcClient.{{ .Name }}(ctx, msg)
-			if err != nil {
-				return protocol.NewReceipt(false, "failed to call service method: %s", err.Error())
-			}
-			{{- end }}
-			{{- end }}
+	// For each event, start a new client, and start a receiver
+	{{- range .Methods }}
+	{{- if handlesEvent . }}
+	{
+		client, err := clientBuilder(ctx, "{{ eventName . }}")
+		if err != nil {
+			return err
 		}
 
-		return protocol.NewReceipt(true, "")
-	})
+		go func() {
+			client.StartReceiver(ctx, func(ctx context.Context, event cloudeventsv2.Event) protocol.Result {
+				// decode the cloudevent into a protobuf message
+				protoEvent, err := format.ToProto(&event)
+				if err != nil {
+					return protocol.NewReceipt(false, "failed to decode event: %s", err.Error())
+				}
+	
+				var msg *{{ input . }}
+				err = protoEvent.GetProtoData().UnmarshalTo(msg)
+				if err != nil {
+					return protocol.NewReceipt(false, "failed to unmarshal event data: %s", err.Error())
+				}
+	
+				_, err = svcClient.{{ .Name }}(ctx, msg)
+				if err != nil {
+					return protocol.NewReceipt(false, "failed to call service method: %s", err.Error())
+				}
+
+				return protocol.NewReceipt(true, "")
+			})
+		}()
+	}
+
+	{{- end }}
+	{{- end }}
+	return nil
 }
 `
