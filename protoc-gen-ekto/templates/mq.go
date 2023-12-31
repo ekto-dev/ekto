@@ -13,6 +13,10 @@ import (
 	cloudeventsv2 "github.com/cloudevents/sdk-go/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	{{- range (imports .) }}
+	"{{ . }}"
+	{{- end }}
 )
 
 var ektoPort = ":3070"

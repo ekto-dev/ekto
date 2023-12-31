@@ -9,6 +9,6 @@ import (
 func main() {
 	pgs.Init(pgs.DebugEnv("DEBUG")).
 		RegisterModule(module.Generator()).
-		RegisterPostProcessor(pgsgo.GoFmt(), pgsgo.GoImports()).
+		RegisterPostProcessor(pgsgo.GoImports(), pgsgo.GoFmt()).
 		Render()
 }

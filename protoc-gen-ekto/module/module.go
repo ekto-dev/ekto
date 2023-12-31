@@ -38,6 +38,21 @@ func (m *EktoModule) InitContext(c pgs.BuildContext) {
 
 			return m.ctx.Name(method.Input()).String()
 		},
+		"imports": func(f pgs.File) []string {
+			var imports []string
+			for _, svc := range f.Services() {
+				for _, method := range svc.Methods() {
+					if importPath := m.ctx.ImportPath(method.Input()); importPath != m.ctx.ImportPath(method) {
+						imports = append(imports, importPath.String())
+					}
+					if importPath := m.ctx.ImportPath(method.Output()); importPath != m.ctx.ImportPath(method) {
+						imports = append(imports, importPath.String())
+					}
+				}
+			}
+
+			return imports
+		},
 		"messageHandlesEvent": func(msg pgs.Message) bool {
 			opts := &ekto.MessageOptions{}
 			ok, err := msg.Extension(ekto.E_Msg, opts)
@@ -116,6 +131,7 @@ func (m *EktoModule) generateMQFile(f pgs.File) {
 		"output": func(m pgs.Method) string {
 			return m.Output().Name().String()
 		},
+		"imports":           m.templateFns["imports"],
 		"hasMessageHandler": svcHandlesEvent,
 		"handlesEvent":      handlesEvent,
 		"eventName": func(method pgs.Method) string {
