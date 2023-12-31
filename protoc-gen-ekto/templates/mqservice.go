@@ -14,7 +14,7 @@ func (p *{{ .Name }}MQProxy) Register(svc {{ name . }}) {
 	Register{{ name . }}(p.server, svc)
 }
 
-func (p *{{ .Name }}MQProxy) Run(ctx context.Context, clientBuilder func (ctx context.Context, topic string) (cloudeventsv2.Client, error)) error {
+func (p *{{ .Name }}MQProxy) Run(ctx context.Context, clientBuilder func (ctx context.Context, topic string, handlerName string) (cloudeventsv2.Client, error)) error {
 	// Start the gRPC server in a goroutine
 	go func() {
 		lis, err := net.Listen("tcp", ektoPort)
@@ -41,25 +41,26 @@ func (p *{{ .Name }}MQProxy) Run(ctx context.Context, clientBuilder func (ctx co
 	}
 
 	svcClient := New{{ .Name }}Client(conn)
+	eg, ctx := errgroup.WithContext(ctx)
 
 	// For each event, start a new client, and start a receiver
 	{{- range .Methods }}
 	{{- if handlesEvent . }}
 	{
-		client, err := clientBuilder(ctx, "{{ eventName . }}")
+		client, err := clientBuilder(ctx, "{{ eventName . }}", "{{ .Name }}")
 		if err != nil {
 			return err
 		}
 
-		go func() {
-			client.StartReceiver(ctx, func(ctx context.Context, event cloudeventsv2.Event) protocol.Result {
+		eg.Go(func() error {
+			return client.StartReceiver(ctx, func(ctx context.Context, event cloudeventsv2.Event) protocol.Result {
 				// decode the cloudevent into a protobuf message
 				protoEvent, err := format.ToProto(&event)
 				if err != nil {
 					return protocol.NewReceipt(false, "failed to decode event: %s", err.Error())
 				}
 	
-				var msg *{{ input . }}
+				msg := &{{ input . }}{}
 				err = protoEvent.GetProtoData().UnmarshalTo(msg)
 				if err != nil {
 					return protocol.NewReceipt(false, "failed to unmarshal event data: %s", err.Error())
@@ -72,11 +73,11 @@ func (p *{{ .Name }}MQProxy) Run(ctx context.Context, clientBuilder func (ctx co
 
 				return protocol.NewReceipt(true, "")
 			})
-		}()
+		})
 	}
 
 	{{- end }}
 	{{- end }}
-	return nil
+	return eg.Wait()
 }
 `
