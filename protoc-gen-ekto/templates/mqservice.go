@@ -16,22 +16,28 @@ func (p *{{ .Name }}MQProxy) Register(svc {{ name . }}) {
 
 func (p *{{ .Name }}MQProxy) Run(ctx context.Context, clientBuilder func (ctx context.Context, topic string, handlerName string) (cloudeventsv2.Client, error)) error {
 	// Start the gRPC server in a goroutine
+	var port int
+	var wgForPort sync.WaitGroup
+	wgForPort.Add(1)
 	go func() {
-		lis, err := net.Listen("tcp", ektoPort)
+		lis, err := net.Listen("tcp", ":0")
 
 		if err != nil {
 			log.Fatalf("failed to listen: %s", err)
 		}
+		port = lis.Addr().(*net.TCPAddr).Port
+		wgForPort.Done()
 
 		if err := p.server.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %s", err)
 		}
 	}()
+	wgForPort.Wait()
 
 	// connect to the gRPC server
 	conn, err := grpc.DialContext(
 		ctx,
-		ektoPort,
+		fmt.Sprintf(":%d", port),
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
