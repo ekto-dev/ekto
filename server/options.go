@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type Middleware = func(h http.Handler) http.Handler
@@ -25,6 +26,16 @@ type Option func(*EktoServer)
 func DefaultOpts() []Option {
 	return []Option{
 		WithGatewayOpts(
+			runtime.WithErrorHandler(HTTPErrorHandler),
+			runtime.WithMarshalerOption(
+				runtime.MIMEWildcard,
+				&runtime.JSONPb{
+					MarshalOptions: protojson.MarshalOptions{
+						UseProtoNames:   true,
+						EmitUnpopulated: true,
+					},
+				},
+			),
 			runtime.WithForwardResponseOption(
 				mw.Redirect,
 			)),
@@ -80,6 +91,10 @@ func (s *EktoServer) Interceptors() ([]grpc.UnaryServerInterceptor, error) {
 	mw = append(mw, ValidateUnaryServerInterceptor(validator))
 	mw = append(mw, GormErrorInterceptor())
 	return mw, nil
+}
+
+func (s *EktoServer) GatewayMuxOpts() []runtime.ServeMuxOption {
+	return s.gatewayMuxOpts
 }
 
 func WithGateway(addr string) Option {
