@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/bufbuild/protovalidate-go"
+	"github.com/ekto-dev/ekto/server/http/mw"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -15,12 +17,29 @@ type EktoServer struct {
 	gatewayAddr     string
 	middlewareStack []Middleware
 	logger          *zap.Logger
+	gatewayMuxOpts  []runtime.ServeMuxOption
 }
 
 type Option func(*EktoServer)
 
+func DefaultOpts() []Option {
+	return []Option{
+		WithGatewayOpts(
+			runtime.WithForwardResponseOption(
+				mw.Redirect,
+			)),
+	}
+}
+
+func WithGatewayOpts(opts ...runtime.ServeMuxOption) Option {
+	return func(s *EktoServer) {
+		s.gatewayMuxOpts = append(s.gatewayMuxOpts, opts...)
+	}
+}
+
 func NewEktoServer(opts ...Option) *EktoServer {
 	s := &EktoServer{}
+	opts = append(DefaultOpts(), opts...)
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -36,8 +55,8 @@ func (s *EktoServer) GatewayAddr() string {
 }
 
 func (s *EktoServer) ApplyMiddleware(h http.Handler) http.Handler {
-	for _, mw := range s.middlewareStack {
-		h = mw(h)
+	for _, middleware := range s.middlewareStack {
+		h = middleware(h)
 	}
 
 	return h
