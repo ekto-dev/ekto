@@ -57,3 +57,16 @@ extend google.protobuf.MessageOptions {
   MessageOptions msg = 50386;
 }
 
+enum RedirectCode {
+  Default = 0;
+  MOVED_PERMANENTLY = 301;
+  FOUND = 302;
+  SEE_OTHER = 303;
+  TEMPORARY_REDIRECT = 307;
+  PERMANENT_REDIRECT = 308;
+}
+
+message Redirect {
+  string url = 1;
+  RedirectCode code = 2;
+}
